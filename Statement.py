@@ -97,7 +97,7 @@ class Statement:
         if len(self.children)>0:
             if len(self.b) > 0:
                 if self.b[0] in "abcdefghijklmnopqrstuvwxyz":
-                    variables[ord(self.b[0])-97] = self.children[0]
+                    variables[self.b[0]] = self.children[0]
                 elif self.b == "?":
                     if stack.pop(len(stack)-1) !=0:
                         self.children[0].execute(stack,variables)
@@ -111,7 +111,6 @@ class Statement:
                 for child in self.children:
                     child.execute(stack,variables)
         else:
-
             #Basic arithmetic operators
             if self.a == '+':
                 a = stack.pop(len(stack)-1)
@@ -134,7 +133,7 @@ class Statement:
                 print self.a[1:-1]
 
             elif self.a[0] in "abcdefghijklmnopqrstuvwxyz":
-                variables[ord(self.a[0])-97].execute(stack,variables)
+                variables[self.a[0]].execute(stack,variables)
 
             elif self.a == '!':
                 0
