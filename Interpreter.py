@@ -8,10 +8,8 @@ state = S.Statement(raw_input())
 # state = S.Statement("1$[$][$@+$.]#")1
 stack = []
 print state.statement
-variables = []
-while len(variables)<26:
-    variables.append(None)
-state.execute(stack,variables)
+variables = {}
+state.execute(stack, variables)
 print "Stack: " + str(stack)
 print "Variables: " + str(variables)
 print "Syntax: " + state.printtree()
