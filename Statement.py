@@ -112,49 +112,94 @@ class Statement:
                     child.execute(stack,variables)
         else:
 
-            #Basic arithmetic operators
+            ### ARITHMETIC OPERATIONS:
+            # +: Add
+            # Input: n, m
+            # Output: m+n
             if self.a == '+':
                 a = stack.pop(len(stack)-1)
                 stack.append(stack.pop(len(stack)-1) + a)
+
+            # -: Substract
+            # Input: n, m
+            # Output: m-n
             elif self.a == '-':
                 a = stack.pop(len(stack)-1)
                 stack.append(stack.pop(len(stack)-1) - a)
+
+            # *: Multiply
+            # Input: n, m
+            # Output: m*n
             elif self.a == '*':
                 a = stack.pop(len(stack)-1)
                 stack.append(stack.pop(len(stack)-1) * a)
+
+            # /: Divide
+            # Input: n, m
+            # Output: m/n
             elif self.a == '/':
                 a = stack.pop(len(stack)-1)
                 stack.append(stack.pop(len(stack)-1) / a)
+
+            # _: Negative
+            # Input: n
+            # Output: -n
             elif self.a == '_':
                 stack.append(-stack.pop(len(stack)-1))
 
+            # .: Print integer
+            # Input: n
+            # Output:
             elif self.a == '.':
                 print stack.pop(len(stack)-1)
+
+            # : Print string
+            # Input:
+            # Output:
             elif self.a[0] == '"':
                 print self.a[1:-1]
 
+            # {letter}: Execute lambda variable
+            # Input:
+            # Output:
             elif self.a[0] in "abcdefghijklmnopqrstuvwxyz":
                 variables[ord(self.a[0])-97].execute(stack,variables)
 
+            # !: Execute lambda variable
+            # Input:
+            # Output:
             elif self.a == '!':
                 0
 
-            # Conditions
+            ### CONDITIONAL OPERATIONS:
+            # =: Equals
+            # Input: n, m
+            # Output: n==m
             elif self.a == '=':
                 if stack.pop(len(stack)-1)==stack.pop(len(stack)-1):
                     stack.append(-1)
                 else:
                     stack.append(0)
 
-            #Basic stack operations
+            ###BASIC STACK OPERATIONS
+            # $: Duplicate top
+            # Input: n
+            # Output: n, n
             elif self.a == '$':
                 stack.append(stack[len(stack)-1])
 
+            # \: Swap
+            # Input: n, m
+            # Output: n, m
             elif self.a == '\\':
                 a = stack.pop(len(stack)-1)
                 b = stack.pop(len(stack)-1)
                 stack.append(a)
                 stack.append(b)
+
+            # @: Rotate
+            # Input: n, m, o
+            # Output: m, o, n
             elif self.a == '@':
                 a = stack.pop(len(stack)-1)
                 b = stack.pop(len(stack)-1)
@@ -162,8 +207,17 @@ class Statement:
                 stack.append(b)
                 stack.append(a)
                 stack.append(c)
+
+            # %: Remove
+            # Input: n
+            # Output:
             elif self.a == '%':
                 stack.pop(len(stack)-1)
+
+            ### INTEGER:
+            # {integer}: Integer
+            # Input:
+            # Output: {integer}
             else:
                 stack.append(int(self.a))
 
@@ -182,6 +236,7 @@ class Statement:
                 return self.children[0].printtree() + self.children[1].printtree()
 
     def printlatex(self,counter):
+        counter=counter+1
         if len(self.children)==0:
             return self.a
         else:
