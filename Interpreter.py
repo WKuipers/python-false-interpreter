@@ -1,46 +1,49 @@
-__author__ = 'Ties'
+__author__ = 'Ties Robroek, Jan Martens en Wietse Kuipers'
 
 import Statement as S
 import sys
-# sys.setrecursionlimit(5000)
+import argparse
 
-if False:
-    with open (raw_input(), "r") as file:
-        data=file.read().replace('\n','').replace('\t','').replace(chr(184),'').replace(chr(248),chr(195))
+#Parse arguments
+parser = argparse.ArgumentParser(description="Python interpreter for the FALSE language")
+parser.add_argument("-f", "--file", type=file, help="Specify a file to read FALSE program from")
+parser.add_argument("-l", "--latex", action="store_true", default=False, help="Output LaTeX code for proof tree corresponding to program")
+parser.add_argument("-o", "--outfile", default="output.tex", help="Specify an output file for the generated LaTeX code. The default is output.tex")
+parser.add_argument("-i", "--input", help="Specify a file to take a string input from.")
+parser.add_argument("--recursionlimit", help="Set the recursion limit for large computations", type=int, default=999)
+args = vars(parser.parse_args())
+
+sys.setrecursionlimit(args["recursionlimit"])
+
+if args["file"] != None:
+    data=args["file"].read().replace('\n','').replace('\t','').replace(chr(184),'').replace(chr(248),chr(195))
     print "DATA =" + data
 else:
     data = raw_input().replace('\n','').replace('\t','').replace(chr(184),'').replace(chr(248),chr(195))
-
-with open ("input.txt", "r") as file:
-    input=file.read().replace('\n','')
+if args.has_key("input"):
+    with open (args["input"], "r") as file:
+        input=file.read().replace('\n','')
 print "Input: " + input
 state = S.Statement(data)
-
-# state = S.Statement("20[1-$][$.]#")
-# state = S.Statement("10$[1-$$.7>[a;!]?]a:a;!")
-# state = S.Statement("[3 5+]a:5a;-")
-# state = S.Statement("[3-]a:3 5+[[$-1][$.]#]z:%{ dit is een comment }99 9[1-$][\$@$@$@$@\/*=[1-$$[%\ 1-$@]?0=[\$.\]?]?]#")
-# state = S.Statement("1$[$][$@+$.]#")1
 stack = []
 print state.statement
 variables = {}
-# state.execute(stack, variables)
 try:
     state.execute(stack, variables)
 except Exception as exc:
     print "EXCEPTION: " + str(exc)
     exit()
-print "\nExecute succesfull:"
+
+print "\nExecution successfull:"
 print " Stack: " + str(stack)
 print " Variables: " + str(variables)
 print " Syntax: " + state.printtree()
 
+if args.get("latex"):
+    with open ("header.tex", "r") as file:
+        header=file.read()
 
-with open ("header.tex", "r") as file:
-    header=file.read()
-
-busstree = header +  state.printbuss() + "\DP\n\\end{document}"
-print " LaTeX: \n" + busstree
-# print " Counter: " + str(counter)
-with open ("busstree.tex", "w") as file:
-    file.write(busstree)
+    busstree = header +  state.printbuss() + "\DP\n\\end{document}"
+    with open ("output.tex", "w") as file:
+        file.write(busstree)
+    print "LaTeX was written to " + args["outfile"]
