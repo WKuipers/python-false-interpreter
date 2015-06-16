@@ -1,6 +1,7 @@
 __author__ = 'Ties'
 import Statement as S
 import sys
+import copy
 
 class Statement:
     def __init__(self,statement):
@@ -28,7 +29,7 @@ class Statement:
                 self.a = self.a + self.statement[len(self.a)]
             self.statement = self.statement[:-1]
 
-        if self.a[0] in "abcdefghijklmnopqrstuvwxyz":
+        if self.a[0] == '\'':
             self.a = self.a + self.statement[len(self.a)]
 
         if self.a[0] == '"':
@@ -42,43 +43,14 @@ class Statement:
             while len(self.a) != close:
                 self.a = self.a + self.statement[len(self.a)]
             self.a = self.a + self.statement[len(self.a)]
-            self.b = self.statement[len(self.a)]
-            if self.b[0] == '[':
-                close = self.findclosure(self.statement[len(self.a):],'[',']')
-                while len(self.b) < close:
-                    # print self.b + str(close) + " " + str(len(self.b))
-                    self.b = self.b + self.statement[len(self.a)+len(self.b)]
-                self.b = self.b + self.statement[len(self.a)+len(self.b)]
-                if self.statement[len(self.a)+len(self.b)] == '#':
-                    self.b = self.b + self.statement[len(self.a)+len(self.b)]
-            elif self.b in "abcdefghijklmnopqrstuvwxyz":
-                self.b = self.b + self.statement[len(self.a)+len(self.b)]
-            elif self.b != "?":
-                self.b = ""
+            self.encapsulate = S.Statement(self.a[1:-1])
 
-        print "Statement: " + self.a + " " + self.b + " Code: " + self.statement
+        # print "Statement: " + self.a + " " + " Code: " + self.statement
          #Composition
-        if len(self.statement) > len(self.a)+len(self.b):
+        if len(self.statement) > len(self.a):
             # print "COMP"
-            self.children.append(S.Statement(self.a+self.b))
-            self.children.append(S.Statement(self.statement[len(self.a)+len(self.b):]))
-            self.b = ""
-        elif len(self.b) > 0:
-            #Var declaration
-            if self.b[0] in "abcdefghijklmnopqrstuvwxyz":
-                self.a = self.a[1:-1]
-                self.children.append(S.Statement(self.a))
-            #If
-            elif self.b == "?":
-                self.a = self.a[1:-1]
-                self.children.append(S.Statement(self.a))
-            #While
-            else:
-                self.a = self.a[1:-1]
-                self.b = self.b[1:-2]
-                self.children.append(S.Statement(self.a))
-                self.children.append(S.Statement(self.b))
-                self.repeat = 0
+            self.children.append(S.Statement(self.a))
+            self.children.append(S.Statement(self.statement[len(self.a):]))
 
     def findclosure(self,string,begin,end):
         cap = 1
@@ -93,25 +65,13 @@ class Statement:
         print "syntax error"
 
     def execute(self,stack,variables):
+        self.prestack = str(stack)
+        self.prevariables = str(variables)
         # print str(stack) + " on " + self.printtree()
-        if len(self.children)>0:
-            if len(self.b) > 0:
-                if self.b[0] in "abcdefghijklmnopqrstuvwxyz":
-                    variables[self.b[0]] = self.children[0]
-                elif self.b == "?":
-                    if stack.pop(len(stack)-1) !=0:
-                        self.children[0].execute(stack,variables)
-                else:
-                    self.children[0].execute(stack,variables)
-                    while stack.pop(len(stack)-1)!=0:
-                        self.repeat = self.repeat + 1
-                        self.children[1].execute(stack,variables)
-                        self.children[0].execute(stack,variables)
-            else:
-                for child in self.children:
-                    child.execute(stack,variables)
+        if len(self.children)==2:
+            for child in self.children:
+                child.execute(stack,variables)
         else:
-
             ### ARITHMETIC OPERATIONS:
             # +: Add
             # Input: n, m
@@ -153,23 +113,67 @@ class Statement:
             elif self.a == '.':
                 print stack.pop(len(stack)-1)
 
+            # ,: Print char
+            # Input: n
+            # Output:
+            elif self.a == ',':
+                print chr(stack.pop(len(stack)-1))
+
             # : Print string
             # Input:
             # Output:
             elif self.a[0] == '"':
                 print self.a[1:-1]
 
-            # {letter}: Execute lambda variable
+            # {letter}: Put/Execute lambda variable
             # Input:
             # Output:
             elif self.a[0] in "abcdefghijklmnopqrstuvwxyz":
-                variables[self.a[0]].execute(stack,variables)
+                stack.append(self.a[0])
+
+            elif self.a[0]==':':
+                a = stack.pop(len(stack)-1)
+                if a in "abcdefghijklmnopqrstuvwxyz":
+                    variables[a] = stack.pop(len(stack)-1)
+                else:
+                    raise Exception("Try to assign to illegal variable!")
+
+            elif self.a[0]==';':
+                stack.append(variables[stack.pop(len(stack)-1)])
 
             # !: Execute lambda variable
-            # Input:
+            # Input: []
             # Output:
             elif self.a == '!':
-                0
+                self.children.append(stack.pop(len(stack)-1))
+                self.children[0].execute(stack,variables)
+
+            # ?: Execute lambda variable conditionally (IF)
+            # Input: [] n
+            # Output:
+            elif self.a == '?':
+                a = stack.pop(len(stack)-1)
+                if stack.pop(len(stack)-1)!=0:
+                    a.execute(stack,variables)
+
+            # #: Execute lambda variable conditionally repeatedly (WHILE)
+            # Input: [] [] n
+            # Output:
+            elif self.a == "#":
+                a = stack.pop(len(stack)-1)
+                b = stack.pop(len(stack)-1)
+                b.execute(stack,variables)
+                self.repetitions = 0
+                self.stacks = []
+                self.variables = []
+                while(stack.pop(len(stack)-1)!=0):
+                    self.repetitions = self.repetitions + 1
+                    child = copy.copy(a)
+                    self.children.append(child)
+                    child.execute(stack,variables)
+                    child = copy.copy(b)
+                    self.children.append(child)
+                    child.execute(stack,variables)
 
             ### CONDITIONAL OPERATIONS:
             # =: Equals
@@ -181,12 +185,27 @@ class Statement:
                 else:
                     stack.append(0)
 
+            # >: Greater Than
+            # Input: n, m
+            # Output: n>m
+            elif self.a == '>':
+                if stack.pop(len(stack)-1)<stack.pop(len(stack)-1):
+                    stack.append(-1)
+                else:
+                    stack.append(0)
+
             ###BASIC STACK OPERATIONS
             # $: Duplicate top
             # Input: n
             # Output: n, n
             elif self.a == '$':
                 stack.append(stack[len(stack)-1])
+
+            # $: Pick
+            # Input: n
+            # Output: m
+            elif len(self.a) == 1 and ord(self.a[0]) == 195:
+                stack.append(stack[len(stack)-1-stack.pop(len(stack)-1)])
 
             # \: Swap
             # Input: n, m
@@ -214,41 +233,111 @@ class Statement:
             elif self.a == '%':
                 stack.pop(len(stack)-1)
 
+            elif self.a == 'Q':
+                stack.append(stack[len(stack)-2-stack.pop(len(stack)-1)])
+
             ### INTEGER:
             # {integer}: Integer
             # Input:
             # Output: {integer}
-            else:
+            elif self.a.isdigit():
                 stack.append(int(self.a))
 
-    def printtree(self):
-        if len(self.children)==0:
-            return "[" + self.a + "]"
-        else:
-            if len(self.b)>0:
-                if self.b[0] in "abcdefghijklmnopqrstuvwxyz":
-                    return " (" + self.children[0].printtree() + "->" + self.b + ") "
-                elif self.b == "?":
-                    return " (" + self.children[0].printtree() + ") "
-                else:
-                    return " {" + self.children[0].printtree() + " : " + self.children[1].printtree() + "} "
-            else:
-                return self.children[0].printtree() + self.children[1].printtree()
+            elif self.a[0] == '\'':
+                stack.append(ord(self.a[1]))
 
-    def printlatex(self,counter):
-        counter=counter+1
-        if len(self.children)==0:
-            return self.a
-        else:
-            if len(self.b)>0:
-                if self.b[0] in "abcdefghijklmnopqrstuvwxyz":
-                    return " (" + self.children[0].printlatex(counter) + "->" + self.b + ") "
-                elif self.b == "?":
-                    return " (" + self.children[0].printlatex(counter) + ") "
-                else:
-                    return " {" + self.children[0].printlatex(counter) + " : " + self.children[1].printlatex(counter) + "} "
+            ### STATEMENT:
             else:
-                return self.children[0].printlatex(counter) + self.children[1].printlatex(counter)
+                if hasattr(self,'encapsulate'):
+                    stack.append(self.encapsulate)
+                else:
+                    raise Exception("Undefined statement '" + self.a + "', ASCII code '" + str(ord(self.a[0])) + "'!")
+        self.poststack = str(stack)
+        self.postvariables = str(variables)
+
+    def printtree(self):
+        if len(self.children)==2:
+            return self.children[0].printtree() + self.children[1].printtree()
+        else:
+            return "[" + self.a + "]"
+
+    def printlatex(self):
+        if len(self.children)>0:
+            string = ""
+
+            if hasattr(self,'repetitions'):
+                return self.makeWhile(0)
+            else:
+                for child in self.children:
+                    string = string + child.printlatex()
+                return "\infer{<" \
+                   + self.format(self.a) + self.format(self.statement[len(self.a):]) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+                   + ">\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)\
+                   + ")}{" + string + "}"
+        else:
+            if self.a[0] == '!':
+                return self.children[0].printlatex()
+            return "<"+ self.format(self.a) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+                   + ">\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)+">"
+
+    def makeWhile(self,i):
+        if i+2<=len(self.children):
+            return self.children[i].printlatex() + self.children[i+1].printlatex() \
+            +  "\infer{" \
+            + self.format(self.a) + self.format(self.statement[len(self.a):]) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+            + ">\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)\
+            + "\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)\
+            + ")}{" + self.makeWhile(i+2) + "}"
+        else:
+            return "\infer{<" \
+            + self.format(self.a) + self.format(self.statement[len(self.a):]) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+            + ">\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)\
+            + ")}{}"
+        return 0
+
+    def printbuss(self):
+            if len(self.children)>0:
+                string = ""
+                if self.a[0] == '!' and len(self.children)==1:
+                    return "\\UnaryInfC{$"+ self.children[0].printbuss() + "$}\n"
+                elif hasattr(self,'repetitions'):
+                    return self.makeWhileb(0)
+                else:
+                    for child in self.children:
+                        string = string + child.printbuss()
+                    return string + "\BinaryInfC{$<" \
+                       + self.format(self.a) + self.format(self.statement[len(self.a):]) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+                       + ">\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)\
+                       + ")$}\n"
+            else:
+                return "\\AxiomC{$\\langle "+ self.format(self.a) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+                       + "\\rangle\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)+")$}\n"
+
+    def makeWhileb(self,i):
+        if i+2<=len(self.children):
+            return self.children[i].printbuss() + self.children[i+1].printbuss() +  self.makeWhileb(i+2) \
+            + "\TrinaryInfC{$<" \
+            + self.format(self.a) + self.format(self.statement[len(self.a):]) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+            + ">\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)\
+            + ")$}\n"
+        else:
+            return "\\AxiomC{$<"+ self.format(self.a) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+                       + ">\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)+">$}\n"
+            # return "\infer{<" \
+            # + self.format(self.a) + self.format(self.statement[len(self.a):]) + "," + self.format(self.prevariables) + "," + self.format(self.prestack) \
+            # + ">\\rightarrow(" + self.format(self.postvariables) + "," + self.format(self.poststack)\
+            # + ")}{}"
+        return 0
+
+    def whileBody(self):
+        return self.format(self.a) + self.format(self.statement[len(self.a):])
 
     def __repr__(self):
         return  self.statement
+
+    def format(self,string):
+        string = string.replace(str('\\'),"\\backslash")
+        string = string.replace(str('^'),"$\\textasciicircum$")
+        for char in "$_&%#":
+            string = string.replace(str(char),"\\"+str(char))
+        return string.replace(str(' '),"\\:")
